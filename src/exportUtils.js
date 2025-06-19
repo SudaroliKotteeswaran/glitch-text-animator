@@ -1,56 +1,70 @@
 import html2canvas from "html2canvas";
+import GIF from "gif.js.optimized";
 
-export async function exportAnimation(elementId, format = "gif", duration = 3) {
+// ✅ Export as GIF
+export async function exportAsGif(elementId) {
   const element = document.getElementById(elementId);
-  if (!element) {
-    alert("Element not found!");
-    return;
+  if (!element) return alert("Element not found");
+
+  const duration = 2000;
+  const frameRate = 10;
+  const totalFrames = (duration / 1000) * frameRate;
+  const frames = [];
+
+  for (let i = 0; i < totalFrames; i++) {
+    const canvas = await html2canvas(element, { backgroundColor: null });
+    frames.push(canvas);
+    await new Promise((res) => setTimeout(res, 1000 / frameRate));
   }
 
-  // Load CCapture from CDN if not already available
-  if (typeof window.CCapture === "undefined") {
-    await new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js";
-      script.onload = resolve;
-      script.onerror = reject;
-      document.body.appendChild(script);
-    });
-  }
-
-  const canvas = await html2canvas(element, {
-    backgroundColor: null,
-    scale: 2,
+  const gif = new GIF({
+    workers: 2,
+    quality: 10,
+    workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js"
   });
 
-  const capturer = new window.CCapture({
-    format: format === "gif" ? "gif" : "webm",
-    framerate: 30,
-    verbose: true,
+  frames.forEach((canvas) => {
+    gif.addFrame(canvas, { delay: 100 });
   });
 
-  const offscreenCanvas = document.createElement("canvas");
-  offscreenCanvas.width = canvas.width;
-  offscreenCanvas.height = canvas.height;
-  const ctx = offscreenCanvas.getContext("2d");
+  gif.on("finished", (blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "glitch-text.gif";
+    a.click();
+  });
 
-  let frameCount = 0;
-  const totalFrames = 30 * duration;
+  gif.render();
+}
 
-  capturer.start();
+// ✅ Export as MP4/WebM using MediaRecorder
+export async function exportAsMp4(elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return alert("Element not found");
 
-  function capture() {
-    ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-    ctx.drawImage(canvas, 0, 0);
-    capturer.capture(offscreenCanvas);
-    frameCount++;
-    if (frameCount < totalFrames) {
-      requestAnimationFrame(capture);
-    } else {
-      capturer.stop();
-      capturer.save();
-    }
-  }
+  const canvas = await html2canvas(element);
+  const stream = canvas.captureStream(30); // 30 fps
+  const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
 
-  capture();
+  const chunks = [];
+  recorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "glitch-text.mp4";
+    a.click();
+  };
+
+  recorder.start();
+
+  // Stop recording after 3 seconds
+  setTimeout(() => {
+    recorder.stop();
+  }, 3000);
 }

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import "./index.css";
-import { exportAnimation } from "./exportUtils";
+import { exportAsGif, exportAsMp4 } from "./exportUtils";
+
 
 
 const fonts = [
@@ -100,12 +101,8 @@ export default function App() {
   </div>
 
   <div className="export-buttons">
-    <button onClick={() => exportAnimation("preview-glitch", "gif")}>
-      🎞 Export GIF
-    </button>
-    <button onClick={() => exportAnimation("preview-glitch", "webm")}>
-      📹 Export MP4
-    </button>
+    <button onClick={() => exportAsGif("preview-glitch")}>Export GIF</button>
+    <button onClick={() => exportAsMp4("preview-glitch")}>Export MP4</button>
   </div>
 </section>
 
